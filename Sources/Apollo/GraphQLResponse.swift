@@ -9,12 +9,9 @@ public final class GraphQLResponse<Operation: GraphQLOperation> {
   }
   
   func parseResult(cacheKeyForObject: CacheKeyForObject? = nil) throws -> Promise<(GraphQLResult<Operation.Data>, RecordSet?)>  {
-    let errors: [GraphQLError]?
-    
     if let errorsEntry = body["errors"] as? [JSONObject] {
-      errors = errorsEntry.map(GraphQLError.init)
-    } else {
-      errors = nil
+      let errors = errorsEntry.map(GraphQLError.init)
+      return Promise(fulfilled: (GraphQLResult(data: nil, errors: errors, source: .server, dependentKeys: nil), nil))
     }
     
     if let dataEntry = body["data"] as? JSONObject {
@@ -31,10 +28,10 @@ public final class GraphQLResponse<Operation: GraphQLOperation> {
       return firstly {
         try executor.execute(selections: Operation.Data.selections, on: dataEntry, withKey: rootCacheKey(for: operation), variables: operation.variables, accumulator: zip(mapper, normalizer, dependencyTracker))
         }.map { (data, records, dependentKeys) in
-          (GraphQLResult(data: data, errors: errors, source: .server, dependentKeys: dependentKeys), records)
+          (GraphQLResult(data: data, errors: nil, source: .server, dependentKeys: dependentKeys), records)
       }
     } else {
-      return Promise(fulfilled: (GraphQLResult(data: nil, errors: errors, source: .server, dependentKeys: nil), nil))
+      return Promise(fulfilled: (GraphQLResult(data: nil, errors: nil, source: .server, dependentKeys: nil), nil))
     }
   }
 }
